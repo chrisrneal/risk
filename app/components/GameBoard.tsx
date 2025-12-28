@@ -117,7 +117,7 @@ export default function GameBoard() {
       const owners = new Set(newTerritories.map(t => t.owner));
       if (owners.size === 1 && newTerritories.length > 0) {
         const winnerId = newTerritories[0].owner;
-        if (winnerId !== null && winnerId !== undefined) {
+        if (winnerId != null) {
           const winner = prev.players[winnerId];
           messageToSet = `🎉 ${winner.name} wins! They control all territories!`;
         }
