@@ -73,6 +73,8 @@ export default function GameBoard() {
       const attackerWins = attackRoll > defenseRoll;
       
       let conquered = false;
+      let messageToSet = '';
+      
       const newTerritories = prev.territories.map(t => {
         if (t.id === defender.id) {
           const newTroops = t.troops - 1;
@@ -80,11 +82,11 @@ export default function GameBoard() {
             // Attacker conquers
             conquered = true;
             const conqueredTroops = attacker.troops - 1;
-            setMessage(`${attacker.name} conquered ${defender.name}!`);
+            messageToSet = `${attacker.name} conquered ${defender.name}!`;
             return { ...t, owner: attacker.owner, troops: conqueredTroops };
           }
           if (attackerWins) {
-            setMessage(`Attack successful! Defender lost 1 troop.`);
+            messageToSet = `Attack successful! Defender lost 1 troop.`;
           }
           return attackerWins ? { ...t, troops: newTroops } : t;
         }
@@ -95,12 +97,26 @@ export default function GameBoard() {
           }
           if (!attackerWins) {
             // Attacker lost the attack
-            setMessage(`Attack failed! Attacker lost 1 troop.`);
+            messageToSet = `Attack failed! Attacker lost 1 troop.`;
             return { ...t, troops: t.troops - 1 };
           }
         }
         return t;
       });
+
+      // Check for win condition
+      const owners = new Set(newTerritories.map(t => t.owner));
+      if (owners.size === 1) {
+        const winnerId = newTerritories[0].owner;
+        const winner = prev.players[winnerId!];
+        messageToSet = `🎉 ${winner.name} wins! They control all territories!`;
+      }
+
+      // Set message before returning new state
+      if (messageToSet) {
+        // Use setTimeout to ensure setMessage is called after state update
+        setTimeout(() => setMessage(messageToSet), 0);
+      }
 
       return {
         ...prev,
