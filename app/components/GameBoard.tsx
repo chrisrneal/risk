@@ -1,34 +1,24 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import { GameState, Territory as TerritoryType } from '../types';
 import { initializeGame } from '../gameData';
 import Territory from './Territory';
 
 export default function GameBoard() {
-  const [gameState, setGameState] = useState<GameState | null>(null);
-  const [message, setMessage] = useState<string>('Deploy your troops!');
-
-  useEffect(() => {
-    // Initialize game only on client side to avoid hydration mismatch
+  const [gameState, setGameState] = useState<GameState>(() => {
     const { territories, players } = initializeGame();
-    setGameState({
+    return {
       territories,
       players,
       currentPlayer: 0,
       phase: 'deploy',
       selectedTerritory: null,
       availableTroops: players[0].troops,
-    });
-  }, []);
+    };
+  });
 
-  if (!gameState) {
-    return (
-      <div className="flex h-screen items-center justify-center bg-gray-900">
-        <div className="text-white text-2xl">Loading game...</div>
-      </div>
-    );
-  }
+  const [message, setMessage] = useState<string>('Deploy your troops!');
 
   const currentPlayer = gameState.players[gameState.currentPlayer];
 
@@ -75,22 +65,24 @@ export default function GameBoard() {
   };
 
   const performAttack = (attacker: TerritoryType, defender: TerritoryType) => {
-    // Simplified attack: random outcome based on troop counts
-    const attackerDice = Math.min(3, attacker.troops - 1);
-    const defenderDice = Math.min(2, defender.troops);
-    
-    const attackRoll = Math.floor(Math.random() * 6) + 1;
-    const defenseRoll = Math.floor(Math.random() * 6) + 1;
-    
-    const attackerWins = attackRoll > defenseRoll;
-    
     setGameState(prev => {
+      // Simplified attack: random outcome based on troop counts
+      const attackRoll = Math.floor(Math.random() * 6) + 1;
+      const defenseRoll = Math.floor(Math.random() * 6) + 1;
+      
+      const attackerWins = attackRoll > defenseRoll;
+      
       const newTerritories = prev.territories.map(t => {
         if (t.id === defender.id) {
           const newTroops = t.troops - 1;
           if (newTroops === 0) {
             // Attacker conquers
-            return { ...t, owner: attacker.owner, troops: attacker.troops - 1 };
+            const conqueredTroops = attacker.troops - 1;
+            setMessage(`${attacker.name} conquered ${defender.name}!`);
+            return { ...t, owner: attacker.owner, troops: conqueredTroops };
+          }
+          if (attackerWins) {
+            setMessage(`Attack successful! Defender lost 1 troop.`);
           }
           return attackerWins ? { ...t, troops: newTroops } : t;
         }
@@ -98,6 +90,7 @@ export default function GameBoard() {
           return t;
         }
         if (t.id === attacker.id && !attackerWins) {
+          setMessage(`Attack failed! Attacker lost 1 troop.`);
           return { ...t, troops: t.troops - 1 };
         }
         return t;
@@ -109,12 +102,6 @@ export default function GameBoard() {
         selectedTerritory: null,
       };
     });
-
-    if (attackerWins && defender.troops === 1) {
-      setMessage(`${attacker.name} conquered ${defender.name}!`);
-    } else {
-      setMessage(`Attack ${attackerWins ? 'successful' : 'failed'}! ${attackerWins ? 'Defender' : 'Attacker'} lost 1 troop.`);
-    }
   };
 
   const endPhase = () => {
