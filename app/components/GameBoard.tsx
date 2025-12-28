@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { GameState, Territory as TerritoryType } from '../types';
 import { initializeGame } from '../gameData';
 import Territory from './Territory';
@@ -19,6 +19,15 @@ export default function GameBoard() {
   });
 
   const [message, setMessage] = useState<string>('Deploy your troops!');
+  const pendingMessageRef = useRef<string | null>(null);
+
+  // Effect to handle pending messages from attack outcomes
+  useEffect(() => {
+    if (pendingMessageRef.current) {
+      setMessage(pendingMessageRef.current);
+      pendingMessageRef.current = null;
+    }
+  }, [gameState]);
 
   const currentPlayer = gameState.players[gameState.currentPlayer];
 
@@ -106,16 +115,17 @@ export default function GameBoard() {
 
       // Check for win condition
       const owners = new Set(newTerritories.map(t => t.owner));
-      if (owners.size === 1) {
+      if (owners.size === 1 && newTerritories.length > 0) {
         const winnerId = newTerritories[0].owner;
-        const winner = prev.players[winnerId!];
-        messageToSet = `🎉 ${winner.name} wins! They control all territories!`;
+        if (winnerId !== null && winnerId !== undefined) {
+          const winner = prev.players[winnerId];
+          messageToSet = `🎉 ${winner.name} wins! They control all territories!`;
+        }
       }
 
-      // Set message before returning new state
+      // Store message in ref to be picked up by useEffect
       if (messageToSet) {
-        // Use setTimeout to ensure setMessage is called after state update
-        setTimeout(() => setMessage(messageToSet), 0);
+        pendingMessageRef.current = messageToSet;
       }
 
       return {
