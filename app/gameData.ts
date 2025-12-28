@@ -18,9 +18,13 @@ export function initializeGame(): { territories: Territory[], players: Player[] 
   const territories = [...initialTerritories];
   const players = [...initialPlayers];
   
-  // Randomly assign territories to players
-  const shuffledTerritories = territories.sort(() => Math.random() - 0.5);
-  shuffledTerritories.forEach((territory, index) => {
+  // Randomly assign territories to players using Fisher-Yates shuffle
+  for (let i = territories.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [territories[i], territories[j]] = [territories[j], territories[i]];
+  }
+  
+  territories.forEach((territory, index) => {
     territory.owner = index % players.length;
     territory.troops = 1;
     players[territory.owner].troops -= 1;

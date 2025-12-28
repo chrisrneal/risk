@@ -72,11 +72,13 @@ export default function GameBoard() {
       
       const attackerWins = attackRoll > defenseRoll;
       
+      let conquered = false;
       const newTerritories = prev.territories.map(t => {
         if (t.id === defender.id) {
           const newTroops = t.troops - 1;
           if (newTroops === 0) {
             // Attacker conquers
+            conquered = true;
             const conqueredTroops = attacker.troops - 1;
             setMessage(`${attacker.name} conquered ${defender.name}!`);
             return { ...t, owner: attacker.owner, troops: conqueredTroops };
@@ -86,12 +88,16 @@ export default function GameBoard() {
           }
           return attackerWins ? { ...t, troops: newTroops } : t;
         }
-        if (t.id === attacker.id && attackerWins && defender.troops > 0) {
-          return t;
-        }
-        if (t.id === attacker.id && !attackerWins) {
-          setMessage(`Attack failed! Attacker lost 1 troop.`);
-          return { ...t, troops: t.troops - 1 };
+        if (t.id === attacker.id) {
+          if (conquered) {
+            // Attacker used troops to conquer
+            return { ...t, troops: 1 };
+          }
+          if (!attackerWins) {
+            // Attacker lost the attack
+            setMessage(`Attack failed! Attacker lost 1 troop.`);
+            return { ...t, troops: t.troops - 1 };
+          }
         }
         return t;
       });
