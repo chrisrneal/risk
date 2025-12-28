@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { GameState, Territory as TerritoryType } from '../types';
 import { initializeGame } from '../gameData';
 import Territory from './Territory';
@@ -19,6 +19,15 @@ export default function GameBoard() {
   });
 
   const [message, setMessage] = useState<string>('Deploy your troops!');
+  const pendingMessageRef = useRef<string | null>(null);
+
+  // Effect to handle pending messages from attack outcomes
+  useEffect(() => {
+    if (pendingMessageRef.current) {
+      setMessage(pendingMessageRef.current);
+      pendingMessageRef.current = null;
+    }
+  }, [gameState]);
 
   const currentPlayer = gameState.players[gameState.currentPlayer];
 
@@ -73,6 +82,8 @@ export default function GameBoard() {
       const attackerWins = attackRoll > defenseRoll;
       
       let conquered = false;
+      let messageToSet = '';
+      
       const newTerritories = prev.territories.map(t => {
         if (t.id === defender.id) {
           const newTroops = t.troops - 1;
@@ -80,11 +91,11 @@ export default function GameBoard() {
             // Attacker conquers
             conquered = true;
             const conqueredTroops = attacker.troops - 1;
-            setMessage(`${attacker.name} conquered ${defender.name}!`);
+            messageToSet = `${attacker.name} conquered ${defender.name}!`;
             return { ...t, owner: attacker.owner, troops: conqueredTroops };
           }
           if (attackerWins) {
-            setMessage(`Attack successful! Defender lost 1 troop.`);
+            messageToSet = `Attack successful! Defender lost 1 troop.`;
           }
           return attackerWins ? { ...t, troops: newTroops } : t;
         }
@@ -95,12 +106,27 @@ export default function GameBoard() {
           }
           if (!attackerWins) {
             // Attacker lost the attack
-            setMessage(`Attack failed! Attacker lost 1 troop.`);
+            messageToSet = `Attack failed! Attacker lost 1 troop.`;
             return { ...t, troops: t.troops - 1 };
           }
         }
         return t;
       });
+
+      // Check for win condition
+      const owners = new Set(newTerritories.map(t => t.owner));
+      if (owners.size === 1 && newTerritories.length > 0) {
+        const winnerId = newTerritories[0].owner;
+        if (winnerId != null) {
+          const winner = prev.players[winnerId];
+          messageToSet = `🎉 ${winner.name} wins! They control all territories!`;
+        }
+      }
+
+      // Store message in ref to be picked up by useEffect
+      if (messageToSet) {
+        pendingMessageRef.current = messageToSet;
+      }
 
       return {
         ...prev,
